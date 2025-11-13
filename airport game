@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Dash</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Use Inter as the default font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for the game */
+        .game-scene {
+            display: none; /* Hide all scenes by default */
+        }
+        .active-scene {
+            display: block; /* Show only the active scene */
+        }
+        /* Simple fade-in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .active-scene {
+            animation: fadeIn 0.5s ease-out;
+        }
+        /* Custom scrollbar for the log */
+        #game-log::-webkit-scrollbar {
+            width: 6px;
+        }
+        #game-log::-webkit-scrollbar-track {
+            background: #4b5563; /* gray-700 */
+            border-radius: 10px;
+        }
+        #game-log::-webkit-scrollbar-thumb {
+            background: #9ca3af; /* gray-400 */
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Game Container -->
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-700">
+        
+        <!-- Header: Title, Timer, Inventory -->
+        <header class="border-b border-gray-700 pb-4 mb-4">
+            <h1 class="text-3xl font-bold text-center text-white mb-2">Terminal Dash</h1>
+            <div class="flex justify-between items-center text-lg">
+                <!-- Timer -->
+                <div>
+                    <span class="font-medium">Flight Departs In:</span>
+                    <span id="timer" class="font-bold text-yellow-400 ml-2">60:00</span>
+                </div>
+                <!-- Inventory -->
+                <div>
+                    <span class="font-medium">Inventory:</span>
+                    <div id="inventory-items" class="flex space-x-2 items-center ml-2">
+                        <!-- Items will be injected here by JS -->
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Game Area: Scenes will be shown here -->
+        <main id="game-area">
+            
+            <!-- Scene 1: Start Screen -->
+            <div id="start-scene" class="game-scene active-scene text-center">
+                <h2 class="text-2xl font-semibold mb-4">Welcome to the Airport!</h2>
+                <p class="text-gray-300 mb-6">
+                    You've just arrived. Your flight to Paradise Island (GA-123) leaves in <span class="font-bold">60 minutes!</span>
+                    You have your passport, but you need to check in, get through security, and find your gate. Don't be late!
+                </p>
+                <button onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200">
+                    Start Your Journey
+                </button>
+            </div>
+
+            <!-- Scene 2: Check-in -->
+            <div id="checkin-scene" class="game-scene">
+                <h2 class="text-2xl font-semibold mb-4">Check-in Hall</h2>
+                <p class="text-gray-300 mb-6">The hall is bustling. You need to find the correct check-in counter for flight GA-123.</p>
+                <div class="space-y-3">
+                    <button onclick="handleCheckin('ac-456')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-5 rounded-lg transition duration-200">
+                        Counter 1: Flight AC-456 (Toronto)
+                    </button>
+                    <button onclick="handleCheckin('ba-789')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-5 rounded-lg transition duration-200">
+                        Counter 2: Flight BA-789 (London)
+                    </button>
+                    <button onclick="handleCheckin('ga-123')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-lg transition duration-200">
+                        Counter 3: Flight GA-123 (Paradise Island)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scene 3: Security -->
+            <div id="security-scene" class="game-scene">
+                <h2 class="text-2xl font-semibold mb-4">Security Checkpoint</h2>
+                <p class="text-gray-300 mb-6">Time to pass security. Put the <span class="text-green-400 font-bold">correct</span> items in the tray. Avoid <span class="text-red-400 font-bold">forbidden</span> items, or you'll be delayed!</p>
+                <div class="flex space-x-4">
+                    <!-- Your Bag -->
+                    <div class="w-1/2">
+                        <h3 class="font-semibold text-lg mb-2 text-center">Your Bag</h3>
+                        <div id="security-bag" class="space-y-2">
+                            <!-- Items to sort will be injected here -->
+                        </div>
+                    </div>
+                    <!-- The Tray -->
+                    <div class="w-1/2 bg-gray-700 rounded-lg p-3 min-h-[150px]">
+                        <h3 class="font-semibold text-lg mb-2 text-center border-b border-gray-600 pb-2">Tray</h3>
+                        <div id="security-tray" class="space-y-1">
+                            <!-- Packed items will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scene 4: Concourse -->
+            <div id="concourse-scene" class="game-scene">
+                <h2 class="text-2xl font-semibold mb-4">Main Concourse</h2>
+                <p class="text-gray-300 mb-6">You're through security! Your gate is <span class="font-bold text-yellow-400">B42</span>, which is a 10-minute walk. You have <span id="concourse-time-left" class="font-bold"></span> minutes left. What do you do?</p>
+                <div class="space-y-3">
+                    <button onclick="handleConcourse('gate')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition duration-200">
+                        Go straight to the gate
+                    </button>
+                    <button onclick="handleConcourse('coffee')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-5 rounded-lg transition duration-200">
+                        Grab a quick coffee (+5 min delay)
+                    </button>
+                    <button onclick="handleConcourse('dutyfree')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-5 rounded-lg transition duration-200">
+                        Browse the Duty-Free shop (+15 min delay)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scene 5: Win -->
+            <div id="win-scene" class="game-scene text-center">
+                <h2 class="text-3xl font-bold text-green-400 mb-4">You Made It!</h2>
+                <p class="text-gray-300 text-lg mb-6">
+                    You arrived at Gate B42 with <span id="win-time" class="font-bold text-white"></span> minutes to spare.
+                    Boarding has just started. Have a great flight to Paradise Island!
+                </p>
+                <button onclick="resetGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200">
+                    Play Again
+                </button>
+            </div>
+
+            <!-- Scene 6: Lose -->
+            <div id="lose-scene" class="game-scene text-center">
+                <h2 class="text-3xl font-bold text-red-500 mb-4">Oh No! You Missed Your Flight!</h2>
+                <p class="text-gray-300 text-lg mb-6" id="lose-message">
+                    <!-- Custom lose message here -->
+                </p>
+                <button onclick="resetGame()" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200">
+                    Try Again
+                </button>
+            </div>
+            
+        </main>
+
+        <!-- Game Log -->
+        <footer class="border-t border-gray-700 pt-4 mt-4">
+            <h3 class="font-semibold text-sm text-gray-400 mb-2">Event Log</h3>
+            <div id="game-log" class="bg-gray-900 h-24 overflow-y-auto rounded-lg p-2 text-sm text-gray-400 space-y-1">
+                <!-- Log messages will be injected here -->
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const elements = {
+            timer: document.getElementById('timer'),
+            inventoryItems: document.getElementById('inventory-items'),
+            gameLog: document.getElementById('game-log'),
+            gameArea: document.getElementById('game-area'),
+            allScenes: document.querySelectorAll('.game-scene'),
+            // Security Scene
+            securityBag: document.getElementById('security-bag'),
+            securityTray: document.getElementById('security-tray'),
+            // Dynamic text
+            concourseTimeLeft: document.getElementById('concourse-time-left'),
+            winTime: document.getElementById('win-time'),
+            loseMessage: document.getElementById('lose-message')
+        };
+
+        // --- Game State ---
+        let gameState = {};
+        let timerInterval = null;
+
+        // Security mini-game items
+        const securityItems = [
+            { name: 'Laptop', required: true, icon: '💻' },
+            { name: 'Phone', required: true, icon: '📱' },
+            { name: 'Keys', required: true, icon: '🔑' },
+            { name: 'Water Bottle', required: false, icon: '💧' },
+            { name: 'Scissors', required: false, icon: '✂️' }
+        ];
+
+        // --- Utility Functions ---
+
+        /**
+         * Resets the game to its initial state
+         */
+        function resetGame() {
+            gameState = {
+                timeLeft: 3600, // 60 minutes in seconds
+                inventory: ['passport'],
+                currentScene: 'start',
+                securityPacked: [],
+                securityRequired: securityItems.filter(i => i.required).map(i => i.name)
+            };
+            
+            stopTimer();
+            updateTimerUI();
+            updateInventoryUI();
+            elements.gameLog.innerHTML = '<p>Welcome! Find your check-in counter.</p>';
+            goToScene('start');
+        }
+
+        /**
+         * Starts the game, typically from the start scene button
+         */
+        function startGame() {
+            startTimer();
+            goToScene('checkin');
+            updateLog("You're heading to the check-in hall.");
+        }
+
+        /**
+         * Hides all scenes and shows the specified one
+         * @param {string} sceneId - The ID of the scene to show (e.g., 'checkin')
+         */
+        function goToScene(sceneId) {
+            // Special logic for scenes that need setup
+            if (sceneId === 'security') {
+                renderSecurityGame();
+            }
+            if (sceneId === 'concourse') {
+                elements.concourseTimeLeft.textContent = Math.floor(gameState.timeLeft / 60);
+            }
+            if (sceneId === 'win') {
+                stopTimer();
+                elements.winTime.textContent = formatTime(gameState.timeLeft);
+            }
+            if (sceneId === 'lose') {
+                stopTimer();
+            }
+
+            // Scene transition
+            elements.allScenes.forEach(scene => {
+                scene.classList.remove('active-scene');
+            });
+            document.getElementById(`${sceneId}-scene`).classList.add('active-scene');
+            gameState.currentScene = sceneId;
+        }
+
+        /**
+         * Adds a message to the game log
+         * @param {string} message - The message to log
+         */
+        function updateLog(message) {
+            const p = document.createElement('p');
+            p.textContent = `> ${message}`;
+            elements.gameLog.appendChild(p);
+            // Auto-scroll to bottom
+            elements.gameLog.scrollTop = elements.gameLog.scrollHeight;
+        }
+
+        /**
+ * Updates the inventory UI based on gameState
+ */
+        function updateInventoryUI() {
+            elements.inventoryItems.innerHTML = '';
+            gameState.inventory.forEach(item => {
+                const itemEl = document.createElement('span');
+                itemEl.classList.add('text-2xl');
+                
+                let icon = '❓';
+                if (item === 'passport') icon = '🛂';
+                if (item === 'boardingPass') icon = '🎟️';
+
+                itemEl.textContent = icon;
+                itemEl.title = item.charAt(0).toUpperCase() + item.slice(1); // Tooltip
+                elements.inventoryItems.appendChild(itemEl);
+            });
+        }
+
+        /**
+         * Formats seconds into a MM:SS string
+         * @param {number} totalSeconds - Total seconds left
+         */
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // --- Timer Functions ---
+
+        /**
+         * Starts the main game timer
+         */
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval); // Clear existing timer
+            
+            timerInterval = setInterval(() => {
+                gameState.timeLeft--;
+                updateTimerUI();
+
+                if (gameState.timeLeft <= 0) {
+                    loseGame("Time's up! The gate closed and your flight left without you.");
+                }
+            }, 1000); // Update every second
+        }
+
+        /**
+         * Stops the game timer
+         */
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        /**
+         * Updates the timer display, adding a warning class if time is low
+         */
+        function updateTimerUI() {
+            elements.timer.textContent = formatTime(gameState.timeLeft);
+            if (gameState.timeLeft <= 600) { // 10 minutes
+                elements.timer.classList.add('text-red-500', 'animate-pulse');
+            } else {
+                elements.timer.classList.remove('text-red-500', 'animate-pulse');
+            }
+        }
+
+        /**
+         * Reduces time left by a specified amount in minutes
+         * @param {number} minutes - Number of minutes to lose
+         * @param {string} reason - Optional reason for the log
+         */
+        function loseTime(minutes, reason = "") {
+            gameState.timeLeft -= (minutes * 60);
+            if (reason) {
+                updateLog(`You lost ${minutes} minutes: ${reason}`);
+            }
+            if (gameState.timeLeft <= 0) {
+                // Ensure time doesn't go negative on display
+                gameState.timeLeft = 0; 
+                updateTimerUI();
+                loseGame("You ran out of time!");
+            } else {
+                updateTimerUI();
+            }
+        }
+
+        /**
+         * Triggers the lose game state
+         * @param {string} message - The reason for losing
+         */
+        function loseGame(message) {
+            elements.loseMessage.textContent = message;
+            goToScene('lose');
+        }
+
+
+        // --- Game Logic Handlers ---
+
+        /**
+         * Handles the choice at the check-in counter
+         * @param {string} flightId - The ID of the counter chosen
+         */
+        function handleCheckin(flightId) {
+            if (flightId === 'ga-123') {
+                updateLog("Correct! You got your boarding pass.");
+                gameState.inventory.push('boardingPass');
+                updateInventoryUI();
+                loseTime(5, "Checking in.");
+                goToScene('security');
+            } else {
+                updateLog("Wrong counter! You had to wait in line again.");
+                loseTime(10, "Waiting at the wrong counter.");
+            }
+        }
+
+        /**
+         * Renders the security mini-game items
+         */
+        function renderSecurityGame() {
+            elements.securityBag.innerHTML = '';
+            elements.securityTray.innerHTML = '';
+            gameState.securityPacked = [];
+
+            // Shuffle items
+            const shuffledItems = [...securityItems].sort(() => Math.random() - 0.5);
+
+            shuffledItems.forEach(item => {
+                const button = document.createElement('button');
+                button.textContent = `${item.icon} ${item.name}`;
+                button.id = `item-${item.name.replace(' ', '-')}`;
+                button.classList.add('w-full', 'bg-gray-600', 'hover:bg-gray-500', 'text-white', 'font-medium', 'py-2', 'px-3', 'rounded-lg', 'transition', 'duration-150');
+                button.onclick = () => handleSecurityItem(item);
+                elements.securityBag.appendChild(button);
+            });
+        }
+
+        /**
+         * Handles clicking an item in the security game
+         * @param {object} item - The item object that was clicked
+         */
+        function handleSecurityItem(item) {
+            if (!item.required) {
+                // Forbidden item
+                updateLog(`SECURITY: "You can't bring a ${item.name}!" You're pulled aside.`);
+                loseTime(15, "Arguing with security over a forbidden item.");
+                // Reset this item
+                renderSecurityGame(); 
+            } else {
+                // Correct item
+                updateLog(`Packed the ${item.name}.`);
+                gameState.securityPacked.push(item.name);
+
+                // Move item to tray
+                const itemEl = document.createElement('div');
+                itemEl.textContent = `${item.icon} ${item.name}`;
+                itemEl.classList.add('bg-gray-800', 'p-2', 'rounded');
+                elements.securityTray.appendChild(itemEl);
+
+                // Disable button
+                document.getElementById(`item-${item.name.replace(' ', '-')}`).disabled = true;
+                document.getElementById(`item-${item.name.replace(' ', '-')}`).classList.add('opacity-50', 'cursor-not-allowed');
+
+                // Check for win
+                if (gameState.securityPacked.length === gameState.securityRequired.length) {
+                    updateLog("You passed security without any issues.");
+                    loseTime(10, "Going through the security scanner.");
+                    goToScene('concourse');
+                }
+            }
+        }
+
+        /**
+         * Handles the choice in the concourse
+         * @param {string} choice - 'gate', 'coffee', or 'dutyfree'
+         */
+        function handleConcourse(choice) {
+            if (choice === 'gate') {
+                updateLog("Smart move. You head straight to the gate.");
+                loseTime(10, "Walking to the gate.");
+            } else if (choice === 'coffee') {
+                updateLog("The coffee was hot, but the line was quick.");
+                loseTime(15, "Coffee break + walk to gate."); // 5 min coffee + 10 min walk
+            } else if (choice === 'dutyfree') {
+                updateLog("You got stuck behind a slow shopper! Bad idea.");
+                loseTime(25, "Duty-free browsing + walk to gate."); // 15 min shop + 10 min walk
+            }
+
+            // After the choice, check if they won or lost based on time
+            if (gameState.timeLeft > 0) {
+                goToScene('win');
+            } else {
+                // This will be caught by the interval, but we can force it
+                loseGame("You wasted too much time and the gate closed!");
+            }
+        }
+
+
+        // --- Initializer ---
+        document.addEventListener('DOMContentLoaded', () => {
+            resetGame();
+        });
+    </script>
+
+</body>
+</html>
